@@ -1,0 +1,45 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hono_template",
+	"main": "src/server.ts",
+	"compatibility_date": "2025-09-16",
+	"vars": {
+		"REQUIRE_AUTH": "0"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "eng_exten_db",
+			"database_id": "9cb81ee3-f1c2-446c-951a-03962cc10fb5"
+		}
+	]
+	// "compatibility_flags": [	
+	//   "nodejs_compat"
+	// ],
+	// "kv_namespaces": [
+	//   {
+	//     "binding": "MY_KV_NAMESPACE",
+	//     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	//   }
+	// ],
+	// "r2_buckets": [
+	//   {
+	//     "binding": "MY_BUCKET",
+	//     "bucket_name": "my-bucket"
+	//   }
+	// ],
+	// "d1_databases": [
+	//   {
+	//     "binding": "MY_DB",
+	//     "database_name": "my-database",
+	//     "database_id": ""
+	//   }
+	// ],
+	// "ai": {
+	//   "binding": "AI"
+	// },
+	// "observability": {
+	//   "enabled": true,
+	//   "head_sampling_rate": 1
+	// }
+}
