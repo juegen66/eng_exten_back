@@ -78,7 +78,7 @@ export class AuthService {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
+        email: user.email || '',
         gender: user.gender as GenderType,
         role: user.role as UserRoleType
       }
@@ -111,6 +111,9 @@ export class AuthService {
     }
 
     // Validate password
+    if (!fullUser.passwordHash) {
+      throw new Error('User password not found')
+    }
     const isValidPassword = await bcrypt.compare(loginData.password, fullUser.passwordHash)
     if (!isValidPassword) {
       throw new Error('Incorrect username or password')
@@ -127,7 +130,7 @@ export class AuthService {
       user: {
         id: fullUser.id,
         username: fullUser.username,
-        email: fullUser.email,
+        email: fullUser.email || '',
         gender: fullUser.gender as GenderType,
         role: fullUser.role as UserRoleType
       }
@@ -154,19 +157,18 @@ export class AuthService {
   }
 
   /**
-   * Generate JWT token.
+   * Generate JWT token (永久有效).
    */
   private async generateToken(user: User): Promise<string> {
     const now = Math.floor(Date.now() / 1000)
-    const expiresIn = this.parseExpiresIn(this.jwtExpiresIn)
     
     const payload: JWTPayload = {
       userId: user.id,
       username: user.username,
       gender: user.gender as GenderType,
       role: user.role as UserRoleType,
-      iat: now,
-      exp: now + expiresIn
+      iat: now
+      // 不设置 exp 字段，token永久有效
     }
 
     return await sign(payload, this.jwtSecret)
@@ -272,6 +274,9 @@ export class AuthService {
     }
 
     // Validate old password
+    if (!user.passwordHash) {
+      throw new Error('User password not found')
+    }
     const isValidOldPassword = await bcrypt.compare(oldPassword, user.passwordHash)
     if (!isValidOldPassword) {
       throw new Error('Incorrect old password')

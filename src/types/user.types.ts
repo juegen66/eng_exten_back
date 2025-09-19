@@ -1,44 +1,57 @@
-import type { users } from '../data/schema'
-
-// User status enum
+// Domain enums
 export const UserStatus = {
   ACTIVE: 'active',
-  INACTIVE: 'inactive', 
+  INACTIVE: 'inactive',
   SUSPENDED: 'suspended',
-  DELETED: 'deleted'
+  DELETED: 'deleted',
 } as const
 
-// User role enum  
 export const UserRole = {
   USER: 'user',
   ADMIN: 'admin',
   MODERATOR: 'moderator',
-  SUPER_ADMIN: 'super_admin'
+  SUPER_ADMIN: 'super_admin',
 } as const
 
-// Theme enum
 export const Theme = {
   LIGHT: 'light',
-  DARK: 'dark', 
-  AUTO: 'auto'
+  DARK: 'dark',
+  AUTO: 'auto',
 } as const
 
-// Gender enum
 export const Gender = {
   MALE: 'male',
   FEMALE: 'female',
-  OTHER: 'other'
+  OTHER: 'other',
 } as const
 
-// Basic type definitions
-export type User = typeof users.$inferSelect
-export type NewUser = typeof users.$inferInsert
+// Enum types
 export type UserStatusType = typeof UserStatus[keyof typeof UserStatus]
 export type UserRoleType = typeof UserRole[keyof typeof UserRole]
 export type ThemeType = typeof Theme[keyof typeof Theme]
 export type GenderType = typeof Gender[keyof typeof Gender]
 
-// Type for required fields when creating a user
+// Domain User (decoupled from DB schema)
+export type User = {
+  id: number
+  username: string
+  email?: string
+  role: UserRoleType
+  status: UserStatusType
+  emailVerified?: boolean
+  passwordHash?: string
+  gender?: GenderType
+  nickname?: string
+  avatar?: string
+  userType?: number
+  userPhone?: string
+  sex?: number
+  remarks?: string
+  clientHost?: string
+  loginTime?: Date
+}
+
+// Create/Update inputs (kept for current routes/service compatibility)
 export type CreateUserInput = {
   username: string
   email: string
@@ -51,12 +64,19 @@ export type CreateUserInput = {
   phone?: string
 }
 
-// Type for optional fields when updating a user
-export type UpdateUserInput = Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>> & {
-  updatedAt?: Date
-}
+export type UpdateUserInput = Partial<{
+  username: string
+  email: string
+  passwordHash: string
+  salt: string
+  firstName?: string
+  lastName?: string
+  displayName?: string
+  gender?: GenderType
+  phone?: string
+}>
 
-// Type for user login information
+// Auth/public view models
 export type UserLoginInfo = {
   id: number
   username: string
@@ -66,12 +86,16 @@ export type UserLoginInfo = {
   emailVerified: boolean
 }
 
-// Type for public user information (without sensitive data)
-export type UserPublicInfo = Pick<User, 
-  'id' | 'username' | 'displayName' | 'avatar' | 'bio' | 'createdAt'
->
+export type UserPublicInfo = {
+  id: number
+  username: string
+  displayName?: string
+  avatar?: string
+  bio?: string
+  createdAt?: Date
+}
 
-// User authentication related types
+// Misc models (left for completeness)
 export type UserAuth = {
   id: number
   username: string
@@ -84,14 +108,12 @@ export type UserAuth = {
   twoFactorEnabled: boolean
 }
 
-// Type for user preferences
 export type UserPreferences = {
   language: string
   timezone: string
   theme: ThemeType
 }
 
-// Type for user security information
 export type UserSecurity = {
   twoFactorEnabled: boolean
   twoFactorSecret?: string
@@ -99,10 +121,9 @@ export type UserSecurity = {
   recoveryTokenExpiresAt?: Date
   lastLoginAt?: Date
   lastLoginIp?: string
-  loginCount: number
+  loginCount?: number
 }
 
-// Type for complete user profile
 export type UserProfile = {
   id: number
   username: string
@@ -115,12 +136,11 @@ export type UserProfile = {
   bio?: string
   phone?: string
   address?: string
-  preferences: UserPreferences
-  createdAt: Date
-  updatedAt: Date
+  preferences?: UserPreferences
+  createdAt?: Date
+  updatedAt?: Date
 }
 
-// JWT Payload type
 export type JWTPayload = {
   userId: number
   username: string
@@ -130,13 +150,11 @@ export type JWTPayload = {
   exp?: number
 }
 
-// Login request type
 export type LoginRequest = {
   username: string
   password: string
 }
 
-// Registration request type
 export type RegisterRequest = {
   username: string
   email: string
@@ -148,7 +166,6 @@ export type RegisterRequest = {
   phone?: string
 }
 
-// Authentication response type
 export type AuthResponse = {
   token: string
   user: {
@@ -159,3 +176,5 @@ export type AuthResponse = {
     role: UserRoleType
   }
 }
+
+

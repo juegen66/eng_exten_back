@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { requireAuth, getCurrentUser } from '../../middleware/auth'
-import type { LoginRequest } from '../../types'
+import type { LoginRequest, RegisterRequest } from '../../types'
 import { z } from 'zod'
 import { validateJson } from '../../tools/zod.tools'
 import { AuthService } from '../../core/auth.service'
@@ -9,12 +9,29 @@ import { AuthService } from '../../core/auth.service'
 const authRoutes = new Hono()
 
 const RegisterSchema = z.object({
-  username: z.string().min(3).max(18),
+  username: z.string().min(3).max(50),
   email: z.string().email(),
-  password: z.string().min(6).max(18),
-  country: z.string().max(60)
+  password: z.string().min(6).max(100),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  displayName: z.string().optional(),
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  phone: z.string().optional()
 })
-type RegisterRequest = z.infer<typeof RegisterSchema>
+
+const LoginSchema = z.object({
+  username: z.string().min(1, 'Username cannot be empty'),
+  password: z.string().min(1, 'Password cannot be empty')
+})
+
+const ChangePasswordSchema = z.object({
+  oldPassword: z.string().min(1, 'Old password cannot be empty'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters').max(100, 'New password must not exceed 100 characters')
+})
+
+const VerifyTokenSchema = z.object({
+  token: z.string().min(1, 'Token cannot be empty')
+})
 
 
 
@@ -29,7 +46,7 @@ authRoutes.post('/register', validateJson(RegisterSchema), async (c: Context) =>
     const authService = c.get('authService')
 
    
-    // Parse request data
+    // Parse request data (already validated by middleware)
     const registerData: RegisterRequest = await c.req.json()
 
     const result = await authService.register(registerData)
@@ -53,7 +70,7 @@ authRoutes.post('/register', validateJson(RegisterSchema), async (c: Context) =>
 /**
  * POST /auth/login - User login
  */
-authRoutes.post('/login', async (c: Context) => {
+authRoutes.post('/login', validateJson(LoginSchema), async (c: Context) => {
   try {
     // Get auth service instance
     const authService = c.get('authService')
@@ -160,7 +177,7 @@ authRoutes.get('/me', requireAuth, async (c: Context) => {
 /**
  * POST /auth/change-password - Change password
  */
-authRoutes.post('/change-password', requireAuth, async (c: Context) => {
+authRoutes.post('/change-password', requireAuth, validateJson(ChangePasswordSchema), async (c: Context) => {
   try {
     // Get auth service instance
     const authService = c.get('authService')
@@ -171,10 +188,6 @@ authRoutes.post('/change-password', requireAuth, async (c: Context) => {
     }
 
     const { oldPassword, newPassword } = await c.req.json()
-
-    if (!oldPassword || !newPassword) {
-      return c.json({ error: 'Old password and new password cannot be empty' }, 400)
-    }
 
     // Change the password
     await authService.changePassword(user.userId, oldPassword, newPassword)
@@ -196,16 +209,12 @@ authRoutes.post('/change-password', requireAuth, async (c: Context) => {
 /**
  * POST /auth/verify-token - Verify token validity
  */
-authRoutes.post('/verify-token', async (c: Context) => {
+authRoutes.post('/verify-token', validateJson(VerifyTokenSchema), async (c: Context) => {
   try {
     // Get auth service instance
     const authService = c.get('authService')
 
     const { token } = await c.req.json()
-
-    if (!token) {
-      return c.json({ error: 'Token cannot be empty' }, 400)
-    }
 
     // Verify the token
     const payload = await authService.verifyToken(token)

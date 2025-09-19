@@ -1,7 +1,18 @@
-import type { SuccessResponse, ErrorResponse } from '../types/response.type'
+
+export interface SuccessResponse {
+    code: number
+    message: string
+    data: any | null
+}
+
+export interface ErrorResponse {
+    code: number
+    message: string
+    data: any | null
+}
 
 
-export const createSuccessResponse = (data: any, message: string = '操作成功'): SuccessResponse => {
+export const successResponse = (message: string, data: any): SuccessResponse => {
     return {
         code: 200,
         message: message,
@@ -9,14 +20,10 @@ export const createSuccessResponse = (data: any, message: string = '操作成功
     }
 }
 
-export const createErrorResponse = (message: string, data: any = null): ErrorResponse => {
+export const errorResponse = (message: string, data: any): ErrorResponse => {
     return {
         code: 500,
         message: message,
         data: data
     }
 }
-
-// 保持向后兼容
-export const successResponse = createSuccessResponse
-export const errorResponse = createErrorResponse

@@ -3,7 +3,7 @@
 
 # Cloudflare Wrangler
 # Contains temporary build artifacts and local state (like D1 sqlite files)
-/.wrangler/
+
 
 # Build output
 /dist/

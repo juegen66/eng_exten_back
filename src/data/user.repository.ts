@@ -1,7 +1,7 @@
 import { eq, or, sql } from 'drizzle-orm'
 import type { Database } from './database'
 import { userTable } from './schema'
-import type { User, NewUser, CreateUserInput, UpdateUserInput, UserLoginInfo, UserPublicInfo, UserRoleType, UserStatusType } from '../types'
+import type { User, CreateUserInput, UpdateUserInput, UserLoginInfo, UserPublicInfo, UserRoleType, UserStatusType } from '../types'
 
 /**
  * User Data Access Layer
@@ -14,7 +14,8 @@ export class UserRepository {
    * Find all userTable.
    */
   async findAll(): Promise<User[]> {
-    return await this.db.select().from(userTable)
+    const rows = await this.db.select().from(userTable)
+    return rows.map((r) => this.mapRowToDomain(r))
   }
 
   /**
@@ -22,7 +23,8 @@ export class UserRepository {
    */
   async findById(id: number): Promise<User | undefined> {
     const result = await this.db.select().from(userTable).where(eq(userTable.id, id))
-    return result.length > 0 ? result[0] : undefined
+    if (result.length === 0) return undefined
+    return this.mapRowToDomain(result[0])
   }
 
   /**
@@ -30,41 +32,55 @@ export class UserRepository {
    */
   async findByUsername(username: string): Promise<User | undefined> {
     const result = await this.db.select().from(userTable).where(eq(userTable.username, username))
-    return result.length > 0 ? result[0] : undefined
+    if (result.length === 0) return undefined
+    return this.mapRowToDomain(result[0])
   }
 
   /**
    * Find a user by email.
    */
   async findByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db.select().from(userTable).where(eq(userTable.email, email))
-    return result.length > 0 ? result[0] : undefined
+    const result = await this.db.select().from(userTable).where(eq(userTable.userEmail, email))
+    if (result.length === 0) return undefined
+    return this.mapRowToDomain(result[0])
   }
 
   /**
    * Create a new user.
    */
   async create(userData: CreateUserInput): Promise<User> {
-    const result = await this.db.insert(userTable).values({
-      ...userData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).returning()
-    return result[0]
+    // Map API input to current schema
+    const insertData = {
+      username: userData.username,
+      password: userData.passwordHash, // store hashed password in `password`
+      nickname: userData.displayName || userData.username,
+      userType: 2,
+      userEmail: userData.email,
+      userStatus: 1,
+      userPhone: userData.phone,
+    }
+    const result = await this.db.insert(userTable).values(insertData as any).returning()
+    return this.mapRowToDomain(result[0])
   }
 
   /**
    * Update user information.
    */
   async update(id: number, userData: UpdateUserInput): Promise<User | undefined> {
+    // Only map fields that exist in schema
+    const setData: Record<string, unknown> = {}
+    if (userData.username !== undefined) setData.username = userData.username
+    if (userData.passwordHash !== undefined) setData.password = userData.passwordHash
+    if ((userData as any).displayName !== undefined) setData.nickname = (userData as any).displayName
+    if (userData.email !== undefined) setData.userEmail = userData.email
+    if ((userData as any).phone !== undefined) setData.userPhone = (userData as any).phone
+
     const result = await this.db.update(userTable)
-      .set({
-        ...userData,
-        updatedAt: new Date(),
-      })
+      .set(setData as any)
       .where(eq(userTable.id, id))
       .returning()
-    return result.length > 0 ? result[0] : undefined
+    if (result.length === 0) return undefined
+    return this.mapRowToDomain(result[0])
   }
 
   /**
@@ -73,9 +89,7 @@ export class UserRepository {
   async softDelete(id: number): Promise<boolean> {
     const result = await this.db.update(userTable)
       .set({
-        status: 'deleted',
-        deletedAt: new Date(),
-        updatedAt: new Date(),
+        userStatus: 3, // map to deleted
       })
       .where(eq(userTable.id, id))
       .returning()
@@ -89,23 +103,21 @@ export class UserRepository {
     const result = await this.db.select({
       id: userTable.id,
       username: userTable.username,
-      email: userTable.email,
-      role: userTable.role,
-      status: userTable.status,
-      emailVerified: userTable.emailVerified,
+      userEmail: userTable.userEmail,
+      userStatus: userTable.userStatus,
     }).from(userTable)
-      .where(or(eq(userTable.username, identifier), eq(userTable.email, identifier)))
-    
+      .where(or(eq(userTable.username, identifier), eq(userTable.userEmail, identifier)))
+
     if (result.length === 0) return undefined
-    
-    const user = result[0]
+
+    const row = result[0]
     return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role as UserLoginInfo['role'],
-      status: user.status as UserLoginInfo['status'],
-      emailVerified: user.emailVerified,
+      id: row.id,
+      username: row.username,
+      email: row.userEmail ?? '',
+      role: 'user',
+      status: this.mapStatusToDomain(row.userStatus),
+      emailVerified: false,
     }
   }
 
@@ -116,26 +128,28 @@ export class UserRepository {
     const result = await this.db.select({
       id: userTable.id,
       username: userTable.username,
-      displayName: userTable.displayName,
+      nickname: userTable.nickname,
       avatar: userTable.avatar,
-      bio: userTable.bio,
-      createdAt: userTable.createdAt,
     }).from(userTable).where(eq(userTable.id, id))
-    
-    return result.length > 0 ? result[0] : undefined
+
+    if (result.length === 0) return undefined
+    const row = result[0]
+    return {
+      id: row.id,
+      username: row.username,
+      displayName: row.nickname ?? undefined,
+      avatar: row.avatar ?? undefined,
+      bio: undefined,
+      createdAt: undefined,
+    }
   }
 
   /**
    * Verify a user's email.
    */
   async verifyEmail(id: number): Promise<boolean> {
-    const result = await this.db.update(userTable)
-      .set({
-        emailVerified: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(userTable.id, id))
-      .returning()
+    // Not supported by current schema; no-op for compatibility
+    const result = await this.db.select({ id: userTable.id }).from(userTable).where(eq(userTable.id, id))
     return result.length > 0
   }
 
@@ -145,10 +159,8 @@ export class UserRepository {
   async updateLastLogin(id: number, ip?: string): Promise<boolean> {
     const result = await this.db.update(userTable)
       .set({
-        lastLoginAt: new Date(),
-        lastLoginIp: ip,
-        loginCount: sql`${userTable.loginCount} + 1`,
-        updatedAt: new Date(),
+        loginTime: new Date(),
+        clientHost: ip,
       })
       .where(eq(userTable.id, id))
       .returning()
@@ -167,7 +179,7 @@ export class UserRepository {
    * Check if an email already exists.
    */
   async emailExists(email: string): Promise<boolean> {
-    const result = await this.db.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, email))
+    const result = await this.db.select({ id: userTable.id }).from(userTable).where(eq(userTable.userEmail, email))
     return result.length > 0
   }
 
@@ -175,13 +187,58 @@ export class UserRepository {
    * Find userTable by role.
    */
   async findByRole(role: UserRoleType): Promise<User[]> {
-    return await this.db.select().from(userTable).where(eq(userTable.role, role))
+    // Role not stored in current schema; return all mapped with default role
+    const rows = await this.db.select().from(userTable)
+    return rows.map((r) => this.mapRowToDomain(r))
   }
 
   /**
    * Find userTable by status.
    */
   async findByStatus(status: UserStatusType): Promise<User[]> {
-    return await this.db.select().from(userTable).where(eq(userTable.status, status))
+    const code = this.mapStatusToCode(status)
+    const rows = await this.db.select().from(userTable).where(eq(userTable.userStatus, code))
+    return rows.map((r) => this.mapRowToDomain(r))
+  }
+
+  private mapRowToDomain(row: any): User {
+    return {
+      id: row.id,
+      username: row.username,
+      email: row.userEmail ?? undefined,
+      role: 'user',
+      status: this.mapStatusToDomain(row.userStatus),
+      emailVerified: false,
+      nickname: row.nickname ?? undefined,
+      avatar: row.avatar ?? undefined,
+      userType: row.userType ?? undefined,
+      userPhone: row.userPhone ?? undefined,
+      sex: row.sex ?? undefined,
+      remarks: row.remarks ?? undefined,
+      clientHost: row.clientHost ?? undefined,
+      loginTime: row.loginTime ? new Date(row.loginTime) : undefined,
+      // expose hashed password for auth flow compatibility
+      passwordHash: row.password,
+    } as User
+  }
+
+  private mapStatusToDomain(userStatus?: number): UserStatusType {
+    switch (userStatus) {
+      case 0: return 'inactive'
+      case 1: return 'active'
+      case 2: return 'suspended'
+      case 3: return 'deleted'
+      default: return 'active'
+    }
+  }
+
+  private mapStatusToCode(status: UserStatusType): number {
+    switch (status) {
+      case 'inactive': return 0
+      case 'active': return 1
+      case 'suspended': return 2
+      case 'deleted': return 3
+      default: return 1
+    }
   }
 }
