@@ -1,20 +1,19 @@
 import type { UserService } from '../core/user.service'
-import type { AuthService } from '../core/auth.service'
-import type { Database } from '../data/database'
+import type { ExtenService } from '../core/exten.service'
+import type { Database } from '../data/schema/database'
 import type { JWTPayload } from './user.types'
+import type { loadConfig } from '../config'
 
 /**
  * Application context type definitions.
  * Defines the types of variables available in the Hono context.
  */
 export interface AppVariables {
-  userService: UserService
-  authService: AuthService
-  user: JWTPayload | null
+  user: any
+  session: any
+  config: ReturnType<typeof loadConfig>
   services: {
     db: Database
-    userService: UserService
-    authService: AuthService
   }
 }
 

@@ -4,7 +4,10 @@
 	"main": "src/server.ts",
 	"compatibility_date": "2025-09-16",
 	"vars": {
-		"REQUIRE_AUTH": "0"
+		"REQUIRE_AUTH": "0",
+		"BETTER_AUTH_SECRET": "better-auth-secret-key-change-this-in-production",
+		"BETTER_AUTH_URL": "http://localhost:8787",
+		"CORS_ORIGIN": "http://localhost:8080"
 	},
 	"d1_databases": [
 		{

@@ -1,6 +1,6 @@
 import { eq, or, sql } from 'drizzle-orm'
-import type { Database } from './database'
-import { userTable } from './schema'
+import type { Database } from './schema/database'
+import { user as userTable } from './schema/auth-schema'
 import type { User, CreateUserInput, UpdateUserInput, UserLoginInfo, UserPublicInfo, UserRoleType, UserStatusType } from '../types'
 
 /**
@@ -8,7 +8,7 @@ import type { User, CreateUserInput, UpdateUserInput, UserLoginInfo, UserPublicI
  * Responsible for all database operations related to userTable.
  */
 export class UserRepository {
-  constructor(private db: Database) {}
+  constructor(private db: Database) { }
 
   /**
    * Find all userTable.

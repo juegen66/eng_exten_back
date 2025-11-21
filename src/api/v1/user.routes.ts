@@ -1,16 +1,15 @@
 import { Hono } from 'hono'
-import { servicesMiddleware } from '../../middleware/services'
+import { getUserService } from '../../core/services'
 import type { CreateUserInput, UpdateUserInput, AppContext } from '../../types'
+import { useAuth } from '../../lib/useAuth'
+import { successResponse } from '../../tools/response.tools'
 
 const user = new Hono<AppContext>()
-
-// Use the service injection middleware
-user.use('*', servicesMiddleware)
 
 // GET /api/v1/users - Get all users
 user.get('/', async (c) => {
   try {
-    const userService = c.get('userService')
+    const userService = getUserService()
     const users = await userService.listUsers()
     return c.json({ users })
   } catch (error) {
@@ -18,18 +17,29 @@ user.get('/', async (c) => {
   }
 })
 
+
+user.get('/usertest', async (c) => {
+  try {
+    const { user, session } = await useAuth(c)
+    return c.json(successResponse('测试成功', { user, session }))
+  } catch (error) {
+    // If useAuth throws a response, return it
+    return error as Response
+  }
+})
+
 // GET /api/v1/users/:id - Get a specific user
 user.get('/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const user = await userService.getUserById(id)
-    
+
     if (!user) {
       return c.json({ error: 'User not found' }, 404)
     }
-    
+
     return c.json({ user })
   } catch (error) {
     if (error instanceof Error && error.message === 'Invalid user ID') {
@@ -43,14 +53,14 @@ user.get('/:id', async (c) => {
 user.get('/:id/public', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const userInfo = await userService.getPublicUserInfo(id)
-    
+
     if (!userInfo) {
       return c.json({ error: 'User not found' }, 404)
     }
-    
+
     return c.json({ user: userInfo })
   } catch (error) {
     if (error instanceof Error && error.message === 'Invalid user ID') {
@@ -60,12 +70,14 @@ user.get('/:id/public', async (c) => {
   }
 })
 
+
+
 // POST /api/v1/users - Create a new user
 user.post('/', async (c) => {
   try {
     const body = await c.req.json()
     const { username, email, passwordHash, salt, firstName, lastName, displayName, phone } = body
-    
+
     const userData: CreateUserInput = {
       username,
       email,
@@ -76,18 +88,18 @@ user.post('/', async (c) => {
       displayName,
       phone
     }
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const newUser = await userService.createUser(userData)
-    
+
     return c.json({ user: newUser }, 201)
   } catch (error) {
     if (error instanceof Error) {
       // Handle business logic errors
-      if (error.message.includes('required') || 
-          error.message.includes('Invalid') || 
-          error.message.includes('already exists') ||
-          error.message.includes('must be')) {
+      if (error.message.includes('required') ||
+        error.message.includes('Invalid') ||
+        error.message.includes('already exists') ||
+        error.message.includes('must be')) {
         return c.json({ error: error.message }, 400)
       }
     }
@@ -101,14 +113,14 @@ user.put('/:id', async (c) => {
     const id = parseInt(c.req.param('id'))
     const body = await c.req.json()
     const updateData: UpdateUserInput = body
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const updatedUser = await userService.updateUser(id, updateData)
-    
+
     if (!updatedUser) {
       return c.json({ error: 'Update failed' }, 500)
     }
-    
+
     return c.json({ user: updatedUser })
   } catch (error) {
     if (error instanceof Error) {
@@ -130,14 +142,14 @@ user.put('/:id', async (c) => {
 user.delete('/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const success = await userService.deleteUser(id)
-    
+
     if (!success) {
       return c.json({ error: 'Delete failed' }, 500)
     }
-    
+
     return c.json({ message: 'User deleted successfully' })
   } catch (error) {
     if (error instanceof Error) {
@@ -159,14 +171,16 @@ user.delete('/:id', async (c) => {
 user.post('/:id/verify-email', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
-    
-    const userService = c.get('userService')
+
+    const userService = getUserService()
     const success = await userService.verifyEmail(id)
-    
+
     if (!success) {
       return c.json({ error: 'Email verification failed' }, 500)
     }
-    
+
+
+
     return c.json({ message: 'Email verified successfully' })
   } catch (error) {
     if (error instanceof Error) {

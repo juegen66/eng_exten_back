@@ -1,6 +1,7 @@
-import type { Database } from '../data/database'
+import type { Database } from '../data/schema/database'
 import { UserRepository } from '../data/user.repository'
 import type { User, CreateUserInput, UpdateUserInput, UserLoginInfo, UserPublicInfo, UserRoleType, UserStatusType } from '../types'
+import { getAuth } from '../lib/auth'
 
 /**
  * User Business Logic Layer
@@ -162,6 +163,7 @@ export class UserService {
     }
     return await this.userRepository.getPublicInfo(id)
   }
+
 
   /**
    * Verify a user's email.

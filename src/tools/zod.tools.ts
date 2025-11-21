@@ -6,7 +6,7 @@ export const validate = <T extends z.ZodTypeAny>(type: 'json' | 'query' | 'param
     return zValidator(type, schema, (result, c) => {
         if (!result.success) {
             let errorMessage: string
-            
+
             switch (type) {
                 case 'json':
                     errorMessage = "Invalid request body"

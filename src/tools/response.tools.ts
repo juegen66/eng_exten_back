@@ -22,7 +22,7 @@ export const successResponse = (message: string, data: any): SuccessResponse => 
 
 export const errorResponse = (message: string, data: any): ErrorResponse => {
     return {
-        code: 500,
+        code: 400,
         message: message,
         data: data
     }
